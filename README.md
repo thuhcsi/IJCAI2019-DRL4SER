@@ -8,4 +8,5 @@ python train.py
 For inferring
 python inferring.py --checkpoint='THE_PATH_OF_MODEL'
 
-# More information is in preparation
+
+More information is in preparation ...
