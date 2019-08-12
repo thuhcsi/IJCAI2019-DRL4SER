@@ -5,6 +5,7 @@ from __future__ import print_function
 import tensorflow as tf
 import sys
 
+
 class Attention(tf.layers.Layer):
   """Multi-headed attention layer."""
 
@@ -24,7 +25,8 @@ class Attention(tf.layers.Layer):
     self.k_dense_layer = tf.layers.Dense(hidden_size, use_bias=False, name="k")
     self.v_dense_layer = tf.layers.Dense(hidden_size, use_bias=False, name="v")
 
-    self.output_dense_layer = tf.layers.Dense(hidden_size, use_bias=False,
+    self.output_dense_layer = tf.layers.Dense(hidden_size,
+                                              use_bias=False,
                                               name="output_transform")
 
   def split_heads(self, x):
@@ -61,7 +63,7 @@ class Attention(tf.layers.Layer):
       x = tf.transpose(x, [0, 2, 1, 3])  # --> [batch, length, num_heads, depth]
       return tf.reshape(x, [batch_size, length, self.hidden_size])
 
-  def call(self, x, y, bias, cache=None, reverse=False, record = False):
+  def call(self, x, y, bias, cache=None, reverse=False, record=False):
     """Apply attention mechanism to x and y.
     Args:
       x: a tensor with shape [batch_size, length_x, hidden_size]
@@ -99,21 +101,24 @@ class Attention(tf.layers.Layer):
 
     # Scale q to prevent the dot product between q and k from growing too large.
     depth = (self.hidden_size // self.num_heads)
-    q *= depth ** -0.5
+    q *= depth**-0.5
 
     # Calculate dot product attention
     logits = tf.sigmoid(tf.matmul(q, k, transpose_b=True))
     logits += bias
     if reverse:
-        logits = 1.0 - tf.sigmoid(logits)
+      logits = 1.0 - tf.sigmoid(logits)
     weights = tf.nn.softmax(logits, name="attention_weights")
 
     if record:
       for head in range(self.num_heads):
-        tf.summary.image('Self_attention_weights_'+str(head), tf.expand_dims(weights[:, head], axis= -1),
-                         max_outputs=3,collections=None, family=None)
+        tf.summary.image('Self_attention_weights_' + str(head),
+                         tf.expand_dims(weights[:, head], axis=-1),
+                         max_outputs=3,
+                         collections=None,
+                         family=None)
     if self.train:
-        weights = tf.nn.dropout(weights, 1.0 - self.attention_dropout)
+      weights = tf.nn.dropout(weights, 1.0 - self.attention_dropout)
     attention_output = tf.matmul(weights, v)
 
     # Recombine heads --> [batch_size, length, hidden_size]
@@ -127,8 +132,14 @@ class Attention(tf.layers.Layer):
 
 class SelfAttention(Attention):
   """Multiheaded self-attention layer."""
-  def call(self, x, bias, cache=None,reverse=False,record =False):
-    return super(SelfAttention, self).call(x, x, bias, cache, reverse,record=record)
+
+  def call(self, x, bias, cache=None, reverse=False, record=False):
+    return super(SelfAttention, self).call(x,
+                                           x,
+                                           bias,
+                                           cache,
+                                           reverse,
+                                           record=record)
 
 
 def get_padding_bias(x):
@@ -144,9 +155,10 @@ def get_padding_bias(x):
   with tf.name_scope("attention_bias"):
     padding = get_padding(x)
     attention_bias = padding * -1e9
-    attention_bias = tf.expand_dims(
-        tf.expand_dims(attention_bias, axis=1), axis=1)
+    attention_bias = tf.expand_dims(tf.expand_dims(attention_bias, axis=1),
+                                    axis=1)
   return attention_bias
+
 
 def get_padding(x, padding_value=0):
   with tf.name_scope("padding"):
