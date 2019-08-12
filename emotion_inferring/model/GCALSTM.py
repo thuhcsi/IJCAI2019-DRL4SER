@@ -26,7 +26,9 @@ LSTMStateTuple = tf.nn.rnn_cell.LSTMStateTuple
 _BIAS_VARIABLE_NAME = "bias"
 _WEIGHTS_VARIABLE_NAME = "kernel"
 
+
 class GCALSTMCell(tf.nn.rnn_cell.RNNCell):
+
   def __init__(self,
                num_units,
                activation=None,
@@ -38,7 +40,7 @@ class GCALSTMCell(tf.nn.rnn_cell.RNNCell):
     # Inputs must be 2-dimensional.
     self.input_spec = base_layer.InputSpec(ndim=2)
     self._num_units = num_units
-    self._activation= activation or math_ops.tanh
+    self._activation = activation or math_ops.tanh
 
   @property
   def state_size(self):
@@ -50,33 +52,39 @@ class GCALSTMCell(tf.nn.rnn_cell.RNNCell):
 
   def build(self, inputs_shape):
     if inputs_shape[1].value is None:
-      raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s" % inputs_shape)
+      raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s" %
+                       inputs_shape)
     input_depth = inputs_shape[1].value - 1
     h_depth = self._num_units
     self._kernel = self.add_variable(
-      _WEIGHTS_VARIABLE_NAME,
-      shape=[input_depth + h_depth, 4 * self._num_units])
+        _WEIGHTS_VARIABLE_NAME,
+        shape=[input_depth + h_depth, 4 * self._num_units])
     self._bias = self.add_variable(
-      _BIAS_VARIABLE_NAME,
-      shape=[4 * self._num_units],
-      initializer=init_ops.zeros_initializer(dtype=self.dtype))
+        _BIAS_VARIABLE_NAME,
+        shape=[4 * self._num_units],
+        initializer=init_ops.zeros_initializer(dtype=self.dtype))
 
   def call(self, inputs, state):
     sigmoid = math_ops.sigmoid
     one = constant_op.constant(1, dtype=dtypes.int32)
-    x = inputs[:,:-1]
-    s = inputs[:,-1]
+    x = inputs[:, :-1]
+    s = inputs[:, -1]
     c, h = state
     one_tensor = constant_op.constant(1, dtype=self.dtype)
     gate_inputs = math_ops.matmul(array_ops.concat([x, h], 1), self._kernel)
     gate_inputs = nn_ops.bias_add(gate_inputs, self._bias)
 
-    i, j, f, o = array_ops.split(value=gate_inputs, num_or_size_splits=4, axis=one)
+    i, j, f, o = array_ops.split(value=gate_inputs,
+                                 num_or_size_splits=4,
+                                 axis=one)
     add = math_ops.add
     multiply = math_ops.multiply
     sub = math_ops.subtract
-    new_c = add(multiply(multiply(c, sigmoid(f)), tf.expand_dims(sub(one_tensor,s),-1)),
-                multiply(multiply(sigmoid(i), self._activation(j)), tf.expand_dims(s,-1)))
+    new_c = add(
+        multiply(multiply(c, sigmoid(f)),
+                 tf.expand_dims(sub(one_tensor, s), -1)),
+        multiply(multiply(sigmoid(i), self._activation(j)),
+                 tf.expand_dims(s, -1)))
     new_h = multiply(self._activation(new_c), sigmoid(o))
     new_state = LSTMStateTuple(new_c, new_h)
     return new_h, new_state
